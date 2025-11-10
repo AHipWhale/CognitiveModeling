@@ -15,7 +15,9 @@
 ###
 
 import numpy
-
+import random
+import math
+import matplotlib.pyplot as plt
 
 ###
 ###
@@ -160,8 +162,75 @@ def vehicleUpdateNotSteering():
 ### Function to run a trial. Needs to be defined by students (section 2 and 3 of assignment)
 
 def runTrial(nrWordsPerSentence =5,nrSentences=3,nrSteeringMovementsWhenSteering=2, interleaving="word"): 
-    print("hello world")
-	
+    
+    resetParameters()
+
+    # variables
+    locPos = []
+    trialTime = 0
+    locColor = []
+
+    if interleaving == "word":
+        trialTime = 0
+
+        vehiclePosition = startingPositionInLane
+
+        wpm = random.gauss(wordsPerMinuteMean, wordsPerMinuteSD)
+
+        timePerWord = (60000 / wpm) # in ms
+
+        for sentence in range(nrSentences):
+            for word in range(nrWordsPerSentence):
+
+                wordTime = 0
+                wordTime += timePerWord
+                wordTime += retrievalTimeWord
+                if word == 0:
+                    wordTime += retrievalTimeSentence
+
+                trialTime += wordTime
+
+                nDrifts = math.floor(wordTime / timeStepPerDriftUpdate)
+
+                for _ in range(nDrifts):
+                    vehiclePosition += vehicleUpdateNotSteering() * (timeStepPerDriftUpdate / 1000)
+                    locPos.append(vehiclePosition)
+                    locColor.append("red")
+
+                if sentence == nrSentences - 1 and word == nrWordsPerSentence - 1:
+                    continue
+                
+                for smws in range(nrSteeringMovementsWhenSteering):
+                    vehicleUpdate = vehicleUpdateActiveSteering(vehiclePosition) * (steeringUpdateTime / 1000) / (steeringUpdateTime / timeStepPerDriftUpdate)
+                    for i in range(5):
+                        vehiclePosition += vehicleUpdate
+                        locPos.append(vehiclePosition)
+                        locColor.append("blue")
+                        trialTime += 50
+
+    
+        timeList = []
+        for i in range(0, len(locPos)):
+            timeList.append(i * 50)
+
+        # print(len(timeList), len(locPos))
+
+        plt.scatter(timeList, locPos, c=locColor)
+
+        plt.show()
+
+        return trialTime, locPos, locColor
+
+
+
+
+
+
+        # for step in range(10):
+            
+trialTime, locPos, _ = runTrial()
+
+print(trialTime, len(locPos))
 	
 	
 
