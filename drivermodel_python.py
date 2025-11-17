@@ -161,7 +161,7 @@ def vehicleUpdateNotSteering():
 
 ### Function to run a trial. Needs to be defined by students (section 2 and 3 of assignment)
 
-def runTrial(nrWordsPerSentence =5,nrSentences=3,nrSteeringMovementsWhenSteering=2, interleaving="word"): 
+def runTrial(nrWordsPerSentence =5,nrSentences=3,nrSteeringMovementsWhenSteering=2, interleaving="word", plot_data=True): 
     
     resetParameters()
 
@@ -202,35 +202,118 @@ def runTrial(nrWordsPerSentence =5,nrSentences=3,nrSteeringMovementsWhenSteering
                 
                 for smws in range(nrSteeringMovementsWhenSteering):
                     vehicleUpdate = vehicleUpdateActiveSteering(vehiclePosition) * (steeringUpdateTime / 1000) / (steeringUpdateTime / timeStepPerDriftUpdate)
+                    
+                    if vehiclePosition >= 0:
+                        vehicleUpdate = -vehicleUpdate
+
+                    # print(vehiclePosition, vehicleUpdate)
+
                     for i in range(5):
                         vehiclePosition += vehicleUpdate
                         locPos.append(vehiclePosition)
                         locColor.append("blue")
                         trialTime += 50
 
+    elif interleaving == "sentence":
+        trialTime = 0
+
+        vehiclePosition = startingPositionInLane
+
+        wpm = random.gauss(wordsPerMinuteMean, wordsPerMinuteSD)
+
+        timePerWord = (60000 / wpm) # in ms
+
+        for sentence in range(nrSentences):
+            sentenceTime = nrWordsPerSentence * timePerWord + retrievalTimeSentence
+
+            trialTime += sentenceTime
+            nDrifts = math.floor(sentenceTime / timeStepPerDriftUpdate)
+
+            for _ in range(nDrifts):
+                vehiclePosition += vehicleUpdateNotSteering() * (timeStepPerDriftUpdate / 1000)
+                locPos.append(vehiclePosition)
+                locColor.append("red")
+
+            if sentence == nrSentences - 1:
+                continue
+
+            for smws in range(nrSteeringMovementsWhenSteering):
+                vehicleUpdate = -vehicleUpdateActiveSteering(vehiclePosition) * (steeringUpdateTime / 1000) / (steeringUpdateTime / timeStepPerDriftUpdate)
+
+                # print(vehiclePosition, vehicleUpdate)
+
+                for i in range(5):
+                    vehiclePosition += vehicleUpdate
+                    locPos.append(vehiclePosition)
+                    locColor.append("blue")
+                    trialTime += 50
+                    
     
-        timeList = []
-        for i in range(0, len(locPos)):
-            timeList.append(i * 50)
+    elif interleaving == "drivingOnly":
+        trialTime = 0
 
+        vehiclePosition = startingPositionInLane
+
+        wpm = random.gauss(wordsPerMinuteMean, wordsPerMinuteSD)
+
+        timePerWord = (60000 / wpm) # in ms
+
+        totalTime = (timePerWord * nrWordsPerSentence) * nrSentences
+        totalTime += nrSentences * retrievalTimeSentence
+
+        for steering in range(math.floor(totalTime / steeringUpdateTime)):
+            vehicleUpdate = -vehicleUpdateActiveSteering(vehiclePosition) * (steeringUpdateTime / 1000) / (steeringUpdateTime / timeStepPerDriftUpdate)
+
+            # print(vehiclePosition, vehicleUpdate)
+
+            for i in range(5):
+                vehiclePosition += vehicleUpdate
+                locPos.append(vehiclePosition)
+                locColor.append("blue")
+                trialTime += 50
+    
+    elif interleaving == "none":
+        trialTime = 0
+
+        vehiclePosition = startingPositionInLane
+
+        wpm = random.gauss(wordsPerMinuteMean, wordsPerMinuteSD)
+
+        timePerWord = (60000 / wpm) # in ms
+
+        for sentence in range(nrSentences):
+            sentenceTime = nrWordsPerSentence * timePerWord + retrievalTimeSentence
+
+            trialTime += sentenceTime
+            nDrifts = math.floor(sentenceTime / timeStepPerDriftUpdate)
+
+            for _ in range(nDrifts):
+                vehiclePosition += vehicleUpdateNotSteering() * (timeStepPerDriftUpdate / 1000)
+                locPos.append(vehiclePosition)
+                locColor.append("red")
+
+    timeList = []
+    for i in range(0, len(locPos)):
+        timeList.append(i * 50)
+
+    mean_DL = sum(locPos)/ len(locPos)
+    max_DL = max(locPos, key=abs)
+
+    if plot_data:
         # print(len(timeList), len(locPos))
+        print("Total time:", trialTime)
+        print("Mean:", mean_DL)
+        print("Max absolute:", max_DL)
 
-        plt.scatter(timeList, locPos, c=locColor)
+        plt.scatter(timeList, locPos, c=locColor, s=2)
 
         plt.show()
 
-        return trialTime, locPos, locColor
+    return trialTime, mean_DL, max_DL
 
-
-
-
-
-
-        # for step in range(10):
             
-trialTime, locPos, _ = runTrial()
+# trialTime, locPos, _ = runTrial(nrWordsPerSentence=17, nrSentences = 10, nrSteeringMovementsWhenSteering = 4, interleaving="none")
 
-print(trialTime, len(locPos))
 	
 	
 
@@ -239,7 +322,56 @@ print(trialTime, len(locPos))
 
 ### function to run multiple simulations. Needs to be defined by students (section 3 of assignment)
 def runSimulations(nrSims = 100):
-    print("hello world")
+
+    grey_colors = ["0", "0.25", "0.5", "0.75"]
+    colors = ["r", "g", "c", "b"]
+    markers = ["o", "^", "D", "x"]
+    strat_list = ["word", "sentence", "drivingOnly", "none"]
+
+    totalTime = []
+    meanDeviation = []
+    maxDeviation = []
+    Condition = []
+    
+    for strat in strat_list:
+        for sim in range(nrSims):
+            totalTime_sim, mean_DL, max_DL = runTrial(nrWordsPerSentence=random.randint(15, 20), nrSentences=10, nrSteeringMovementsWhenSteering=4, interleaving=strat, plot_data=False)
+
+            totalTime.append(totalTime_sim)
+            meanDeviation.append(mean_DL)
+            maxDeviation.append(max_DL)
+            Condition.append(strat)
+    
+
+    for i, strat in enumerate(strat_list):
+        indices = [i for i, x in enumerate(Condition) if x == strat]
+        condition_totalTime = totalTime[indices[0]: indices[-1] + 1]
+        condition_maxDeviation = maxDeviation[indices[0]: indices[-1] + 1]
+
+        avg_con_maxDev = sum(condition_maxDeviation) / len(condition_maxDeviation)
+        avg_con_toTim = sum(condition_totalTime) / len(condition_totalTime)
+
+        stand_con_maxDev = numpy.std(condition_maxDeviation)
+        stand_con_toTim = numpy.std(condition_totalTime)
+
+        plt.scatter(condition_totalTime, condition_maxDeviation, marker=markers[i], s=20, c=grey_colors[i])
+
+        plt.errorbar(avg_con_toTim, avg_con_maxDev, xerr=stand_con_toTim, yerr=stand_con_maxDev, c=colors[i])
+    
+    for i, strat in enumerate(strat_list):
+        indices = [i for i, x in enumerate(Condition) if x == strat]
+        condition_totalTime = totalTime[indices[0]: indices[-1] + 1]
+        condition_maxDeviation = maxDeviation[indices[0]: indices[-1] + 1]
+
+        avg_con_maxDev = sum(condition_maxDeviation) / len(condition_maxDeviation)
+        avg_con_toTim = sum(condition_totalTime) / len(condition_totalTime)
+
+        plt.scatter(avg_con_toTim, avg_con_maxDev, marker=markers[i], c=colors[i], s=50, label=strat)
+
+    plt.legend()
+    plt.show()
+
+runSimulations()
 
 
 
