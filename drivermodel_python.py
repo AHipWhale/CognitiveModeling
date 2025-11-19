@@ -369,6 +369,8 @@ def runSimulations(nrSims = 100):
         plt.scatter(avg_con_toTim, avg_con_maxDev, marker=markers[i], c=colors[i], s=50, label=strat)
 
     plt.legend()
+    plt.xlabel("Time (ms)")
+    plt.ylabel("Max Lane Deviation")
     plt.show()
 
 runSimulations()
